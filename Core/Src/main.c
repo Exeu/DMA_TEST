@@ -23,6 +23,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "stdlib.h"
+#include "math.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -57,6 +58,7 @@ static void MX_DMA_Init(void);
 static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
 uint32_t hsl_to_rgb(uint8_t h, uint8_t s, uint8_t l);
+uint8_t rainbow_effect_left();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -67,6 +69,7 @@ uint32_t hsl_to_rgb(uint8_t h, uint8_t s, uint8_t l);
 #define NUM_BPP (3)
 #define NUM_PIXELS (8)
 #define NUM_BYTES (NUM_BPP * NUM_PIXELS)
+#define PI 3.14159265
 
 // LED color buffer
 uint8_t rgb_arr[NUM_BYTES] = {0};
@@ -75,15 +78,23 @@ uint8_t rgb_arr[NUM_BYTES] = {0};
 #define WR_BUF_LEN (NUM_BPP * 8 * 2)
 uint16_t wr_buf[WR_BUF_LEN] = {0};
 uint_fast8_t wr_buf_p = 0;
+uint16_t effStep = 0;
+int brightness = 0;
 
 static inline uint8_t scale8(uint8_t x, uint8_t scale) {
   return ((uint16_t)x * scale) >> 8;
 }
 
+void set_brightness(int bright) {
+	brightness = bright;
+}
+
 void led_set_RGB(uint8_t index, uint8_t r, uint8_t g, uint8_t b) {
-  rgb_arr[3 * index] 	 = g; // g;
-  rgb_arr[3 * index + 1] = r;
-  rgb_arr[3 * index + 2] = b; // b;
+  float angle = 90-brightness;  // in degrees
+  angle = angle*PI / 180;  // in rad
+  rgb_arr[3 * index]= (g)/(tan(angle)); // g;
+  rgb_arr[3 * index + 1] = (r)/(tan(angle));
+  rgb_arr[3 * index + 2] = (b)/(tan(angle));
 
 }
 
@@ -187,23 +198,22 @@ int main(void)
   MX_DMA_Init();
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
+  set_brightness(1);
 
-
-  led_set_RGB(0,  100,  0,  0);
-  led_set_RGB(1,  0,  0,  120);
-  led_set_RGB(2,  100,  0,  0);
-  led_set_RGB(3,  100,  0,  0);
-
-  led_render();
-
-  /**
-  HAL_Delay(5000);
-  led_set_RGB(1, (uint8_t) 0, (uint8_t) 100, (uint8_t) 0);
-
+  /*
+  led_set_RGB(0, (uint8_t) 0, (uint8_t) 100, (uint8_t) 0);
+  led_set_RGB(1, (uint8_t) 100, (uint8_t) 0, (uint8_t) 0);
+  led_set_RGB(2, (uint8_t) 0, (uint8_t) 100, (uint8_t) 0);
+  led_set_RGB(3, (uint8_t) 0, (uint8_t) 0, (uint8_t) 100);
+  led_set_RGB(4, (uint8_t) 0, (uint8_t) 100, (uint8_t) 0);
+  led_set_RGB(5, (uint8_t) 100, (uint8_t) 0, (uint8_t) 0);
+  led_set_RGB(6, (uint8_t) 0, (uint8_t) 100, (uint8_t) 0);
+  led_set_RGB(7, (uint8_t) 0, (uint8_t) 0, (uint8_t) 100);
   led_render();
 */
-  uint8_t angle = 0;
+  uint8_t ang = 0;
   const uint8_t angle_difference = 11;
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -211,18 +221,22 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-
+	  	/*
 	  	for(uint8_t i = 0; i < 8; i++) {
 				// Calculate color
-				uint32_t rgb_color = hsl_to_rgb(angle + (i * angle_difference), 255, 127);
+				uint32_t rgb_color = hsl_to_rgb(ang + (i * angle_difference), 255, 127);
 				// Set color
 				led_set_RGB(i, (rgb_color >> 16) & 0xFF, (rgb_color >> 8) & 0xFF, rgb_color & 0xFF);
 			}
 			// Write to LED
-	  	++angle;
+	  	++ang;
 			led_render();
 			// Some delay
-			HAL_Delay(10);
+			HAL_Delay(500);
+		*/
+
+	  rainbow_effect_left();
+	  HAL_Delay(30);
 
     /* USER CODE BEGIN 3 */
   }
@@ -483,6 +497,40 @@ for (int i=0; i<50; i++)
   //HAL_TIM_Base_Start_IT(&htim1);
 
  */
+uint8_t rainbow_effect_left() {
+    // Strip ID: 0 - Effect: Rainbow - LEDS: 8
+    // Steps: 13 - Delay: 54
+    // Colors: 3 (255.0.0, 0.255.0, 0.0.255)
+    // Options: rainbowlen=8, toLeft=true,
+//  if(millis() - strip_0.effStart < 54 * (strip_0.effStep)) return 0x00;
+
+  float factor1, factor2;
+  uint16_t ind;
+  for(uint16_t j=0;j<8;j++) {
+    ind = effStep + j * 1.625;
+    switch((int)((ind % 13) / 4.333333333333333)) {
+      case 0: factor1 = 1.0 - ((float)(ind % 13 - 0 * 4.333333333333333) / 4.333333333333333);
+              factor2 = (float)((int)(ind - 0) % 13) / 4.333333333333333;
+              /************ chnaged here *********/
+              led_set_RGB(j, 255 * factor1 + 0 * factor2, 0 * factor1 + 255 * factor2, 0 * factor1 + 0 * factor2);
+              break;
+      case 1: factor1 = 1.0 - ((float)(ind % 13 - 1 * 4.333333333333333) / 4.333333333333333);
+              factor2 = (float)((int)(ind - 4.333333333333333) % 13) / 4.333333333333333;
+              led_set_RGB(j, 0 * factor1 + 0 * factor2, 255 * factor1 + 0 * factor2, 0 * factor1 + 255 * factor2);
+              break;
+      case 2: factor1 = 1.0 - ((float)(ind % 13 - 2 * 4.333333333333333) / 4.333333333333333);
+              factor2 = (float)((int)(ind - 8.666666666666666) % 13) / 4.333333333333333;
+              led_set_RGB(j, 0 * factor1 + 255 * factor2, 0 * factor1 + 0 * factor2, 255 * factor1 + 0 * factor2);
+              break;
+    }
+  }
+  if(effStep >= 13) {effStep=0; return 0x03; }
+  else effStep++;
+
+  led_render();
+  return 0x01;
+}
+
 
 uint32_t hsl_to_rgb(uint8_t h, uint8_t s, uint8_t l) {
 	if(l == 0) return 0;
