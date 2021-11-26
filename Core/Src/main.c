@@ -24,6 +24,10 @@
 /* USER CODE BEGIN Includes */
 #include "stdlib.h"
 #include "math.h"
+#include "led_driver.h"
+#include "effects/rainbow_fade.h"
+#include "effects/rainbow_left.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -47,7 +51,6 @@ DMA_HandleTypeDef hdma_tim1_ch1;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim);
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -57,115 +60,10 @@ static void MX_USART2_UART_Init(void);
 static void MX_DMA_Init(void);
 static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
-uint32_t hsl_to_rgb(uint8_t h, uint8_t s, uint8_t l);
-uint8_t rainbow_effect_left();
-void rainbow_effect_fade();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-#define PWM_HI (58)
-#define PWM_LO (29)
-
-#define NUM_BPP (3)
-#define NUM_PIXELS (8)
-#define NUM_BYTES (NUM_BPP * NUM_PIXELS)
-#define PI 3.14159265
-
-// LED color buffer
-uint8_t rgb_arr[NUM_BYTES] = {0};
-
-// LED write buffer
-#define WR_BUF_LEN (NUM_BPP * 8 * 2)
-uint16_t wr_buf[WR_BUF_LEN] = {0};
-uint_fast8_t wr_buf_p = 0;
-uint16_t effStep = 0;
-int brightness = 0;
-uint8_t ang = 0;
-const uint8_t angle_difference = 11;
-
-
-static inline uint8_t scale8(uint8_t x, uint8_t scale) {
-  return ((uint16_t)x * scale) >> 8;
-}
-
-void set_brightness(int bright) {
-	brightness = bright;
-}
-
-void led_set_RGB(uint8_t index, uint8_t r, uint8_t g, uint8_t b) {
-  float angle = 90-brightness;  // in degrees
-  angle = angle*PI / 180;  // in rad
-  rgb_arr[3 * index]= (g)/(tan(angle)); // g;
-  rgb_arr[3 * index + 1] = (r)/(tan(angle));
-  rgb_arr[3 * index + 2] = (b)/(tan(angle));
-
-}
-
-void led_render() {
-  //for(uint8_t i = 0; i < WR_BUF_LEN; ++i) wr_buf[i] = 0;
-
-  if(wr_buf_p != 0 || hdma_tim1_ch1.State != HAL_DMA_STATE_READY) {
-	// Ongoing transfer, cancel!
-	for(uint8_t i = 0; i < WR_BUF_LEN; ++i) wr_buf[i] = 0;
-	wr_buf_p = 0;
-	HAL_TIM_PWM_Stop_DMA(&htim1, TIM_CHANNEL_1);
-	return;
-  }
-
-  for(uint_fast8_t i = 0; i < 8; ++i) {
-    wr_buf[i     ] = PWM_LO << (((rgb_arr[0] << i) & 0x80) > 0);
-    wr_buf[i +  8] = PWM_LO << (((rgb_arr[1] << i) & 0x80) > 0);
-    wr_buf[i + 16] = PWM_LO << (((rgb_arr[2] << i) & 0x80) > 0);
-    wr_buf[i + 24] = PWM_LO << (((rgb_arr[3] << i) & 0x80) > 0);
-    wr_buf[i + 32] = PWM_LO << (((rgb_arr[4] << i) & 0x80) > 0);
-    wr_buf[i + 40] = PWM_LO << (((rgb_arr[5] << i) & 0x80) > 0);
-  }
-
-  HAL_TIM_PWM_Start_DMA(&htim1, TIM_CHANNEL_1, (uint32_t *)wr_buf, WR_BUF_LEN);
-  wr_buf_p = 2;
-}
-
-void HAL_TIM_PWM_PulseFinishedHalfCpltCallback(TIM_HandleTypeDef *htim) {
-  // DMA buffer set from LED(wr_buf_p) to LED(wr_buf_p + 1)
-  if(wr_buf_p < NUM_PIXELS) {
-    // We're in. Fill the even buffer
-    for(uint_fast8_t i = 0; i < 8; ++i) {
-      wr_buf[i     ] = PWM_LO << (((rgb_arr[3 * wr_buf_p    ] << i) & 0x80) > 0);
-      wr_buf[i +  8] = PWM_LO << (((rgb_arr[3 * wr_buf_p + 1] << i) & 0x80) > 0);
-      wr_buf[i + 16] = PWM_LO << (((rgb_arr[3 * wr_buf_p + 2] << i) & 0x80) > 0);
-    }
-    wr_buf_p++;
-  } else if (wr_buf_p < NUM_PIXELS + 2) {
-    // Last two transfers are resets. SK6812: 64 * 1.25 us = 80 us == good enough reset
-  	//                               WS2812B: 48 * 1.25 us = 60 us == good enough reset
-    // First half reset zero fill
-    for(uint8_t i = 0; i < WR_BUF_LEN / 2; ++i) wr_buf[i] = 0;
-    wr_buf_p++;
-  }
-}
-
-void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
-{
-	  // DMA buffer set from LED(wr_buf_p) to LED(wr_buf_p + 1)
-	  if(wr_buf_p < NUM_PIXELS) {
-	    // We're in. Fill the odd buffer
-	    for(uint_fast8_t i = 0; i < 8; ++i) {
-	      wr_buf[i + 24] = PWM_LO << (((rgb_arr[3 * wr_buf_p    ] << i) & 0x80) > 0);
-	      wr_buf[i + 32] = PWM_LO << (((rgb_arr[3 * wr_buf_p + 1] << i) & 0x80) > 0);
-	      wr_buf[i + 40] = PWM_LO << (((rgb_arr[3 * wr_buf_p + 2] << i) & 0x80) > 0);
-	    }
-	    wr_buf_p++;
-	  } else if (wr_buf_p < NUM_PIXELS + 2) {
-	    // Second half reset zero fill
-	    for(uint8_t i = WR_BUF_LEN / 2; i < WR_BUF_LEN; ++i) wr_buf[i] = 0;
-	    ++wr_buf_p;
-	  } else {
-	    // We're done. Lean back and until next time!
-	    wr_buf_p = 0;
-	    HAL_TIM_PWM_Stop_DMA(&htim1, TIM_CHANNEL_1);
-	  }
-}
 
 
 /* USER CODE END 0 */
@@ -202,21 +100,7 @@ int main(void)
   MX_DMA_Init();
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
-  set_brightness(10);
-
-  /*
-  led_set_RGB(0, (uint8_t) 0, (uint8_t) 100, (uint8_t) 0);
-  led_set_RGB(1, (uint8_t) 100, (uint8_t) 0, (uint8_t) 0);
-  led_set_RGB(2, (uint8_t) 0, (uint8_t) 100, (uint8_t) 0);
-  led_set_RGB(3, (uint8_t) 0, (uint8_t) 0, (uint8_t) 100);
-  led_set_RGB(4, (uint8_t) 0, (uint8_t) 100, (uint8_t) 0);
-  led_set_RGB(5, (uint8_t) 100, (uint8_t) 0, (uint8_t) 0);
-  led_set_RGB(6, (uint8_t) 0, (uint8_t) 100, (uint8_t) 0);
-  led_set_RGB(7, (uint8_t) 0, (uint8_t) 0, (uint8_t) 100);
-  led_render();
-*/
-
-
+  set_brightness(2);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -226,7 +110,7 @@ int main(void)
     /* USER CODE END WHILE */
 	  rainbow_effect_fade();
 	  //rainbow_effect_left();
-	  HAL_Delay(5);
+	  HAL_Delay(20);
 
     /* USER CODE BEGIN 3 */
   }
@@ -434,83 +318,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
-void rainbow_effect_fade() {
-  	for(uint8_t i = 0; i < 8; i++) {
-			// Calculate color
-			uint32_t rgb_color = hsl_to_rgb(ang + (i * angle_difference), 255, 127);
-			// Set color
-			led_set_RGB(i, (rgb_color >> 16) & 0xFF, (rgb_color >> 8) & 0xFF, rgb_color & 0xFF);
-		}
-		// Write to LED
-  	++ang;
-		led_render();
-		// Some delay
-}
-
-uint8_t rainbow_effect_left() {
-    // Strip ID: 0 - Effect: Rainbow - LEDS: 8
-    // Steps: 13 - Delay: 54
-    // Colors: 3 (255.0.0, 0.255.0, 0.0.255)
-    // Options: rainbowlen=8, toLeft=true,
-//  if(millis() - strip_0.effStart < 54 * (strip_0.effStep)) return 0x00;
-
-  float factor1, factor2;
-  uint16_t ind;
-  for(uint16_t j=0;j<8;j++) {
-    ind = effStep + j * 1.625;
-    switch((int)((ind % 13) / 4.333333333333333)) {
-      case 0: factor1 = 1.0 - ((float)(ind % 13 - 0 * 4.333333333333333) / 4.333333333333333);
-              factor2 = (float)((int)(ind - 0) % 13) / 4.333333333333333;
-              /************ chnaged here *********/
-              led_set_RGB(j, 255 * factor1 + 0 * factor2, 0 * factor1 + 255 * factor2, 0 * factor1 + 0 * factor2);
-              break;
-      case 1: factor1 = 1.0 - ((float)(ind % 13 - 1 * 4.333333333333333) / 4.333333333333333);
-              factor2 = (float)((int)(ind - 4.333333333333333) % 13) / 4.333333333333333;
-              led_set_RGB(j, 0 * factor1 + 0 * factor2, 255 * factor1 + 0 * factor2, 0 * factor1 + 255 * factor2);
-              break;
-      case 2: factor1 = 1.0 - ((float)(ind % 13 - 2 * 4.333333333333333) / 4.333333333333333);
-              factor2 = (float)((int)(ind - 8.666666666666666) % 13) / 4.333333333333333;
-              led_set_RGB(j, 0 * factor1 + 255 * factor2, 0 * factor1 + 0 * factor2, 255 * factor1 + 0 * factor2);
-              break;
-    }
-  }
-  if(effStep >= 13) {effStep=0; return 0x03; }
-  else effStep++;
-
-  led_render();
-  return 0x01;
-}
-
-
-uint32_t hsl_to_rgb(uint8_t h, uint8_t s, uint8_t l) {
-	if(l == 0) return 0;
-
-	volatile uint8_t  r, g, b, lo, c, x, m;
-	volatile uint16_t h1, l1, H;
-	l1 = l + 1;
-	if (l < 128)    c = ((l1 << 1) * s) >> 8;
-	else            c = (512 - (l1 << 1)) * s >> 8;
-
-	H = h * 6;              // 0 to 1535 (actually 1530)
-	lo = H & 255;           // Low byte  = primary/secondary color mix
-	h1 = lo + 1;
-
-	if ((H & 256) == 0)   x = h1 * c >> 8;          // even sextant, like red to yellow
-	else                  x = (256 - h1) * c >> 8;  // odd sextant, like yellow to green
-
-	m = l - (c >> 1);
-	switch(H >> 8) {       // High byte = sextant of colorwheel
-	 case 0 : r = c; g = x; b = 0; break; // R to Y
-	 case 1 : r = x; g = c; b = 0; break; // Y to G
-	 case 2 : r = 0; g = c; b = x; break; // G to C
-	 case 3 : r = 0; g = x; b = c; break; // C to B
-	 case 4 : r = x; g = 0; b = c; break; // B to M
-	 default: r = c; g = 0; b = x; break; // M to R
-	}
-
-	return (((uint32_t)r + m) << 16) | (((uint32_t)g + m) << 8) | ((uint32_t)b + m);
-}
 
 /* USER CODE END 4 */
 
