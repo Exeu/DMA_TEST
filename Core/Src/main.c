@@ -59,6 +59,7 @@ static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
 uint32_t hsl_to_rgb(uint8_t h, uint8_t s, uint8_t l);
 uint8_t rainbow_effect_left();
+void rainbow_effect_fade();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -80,6 +81,9 @@ uint16_t wr_buf[WR_BUF_LEN] = {0};
 uint_fast8_t wr_buf_p = 0;
 uint16_t effStep = 0;
 int brightness = 0;
+uint8_t ang = 0;
+const uint8_t angle_difference = 11;
+
 
 static inline uint8_t scale8(uint8_t x, uint8_t scale) {
   return ((uint16_t)x * scale) >> 8;
@@ -198,7 +202,7 @@ int main(void)
   MX_DMA_Init();
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
-  set_brightness(1);
+  set_brightness(10);
 
   /*
   led_set_RGB(0, (uint8_t) 0, (uint8_t) 100, (uint8_t) 0);
@@ -211,8 +215,7 @@ int main(void)
   led_set_RGB(7, (uint8_t) 0, (uint8_t) 0, (uint8_t) 100);
   led_render();
 */
-  uint8_t ang = 0;
-  const uint8_t angle_difference = 11;
+
 
   /* USER CODE END 2 */
 
@@ -221,22 +224,9 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-	  	/*
-	  	for(uint8_t i = 0; i < 8; i++) {
-				// Calculate color
-				uint32_t rgb_color = hsl_to_rgb(ang + (i * angle_difference), 255, 127);
-				// Set color
-				led_set_RGB(i, (rgb_color >> 16) & 0xFF, (rgb_color >> 8) & 0xFF, rgb_color & 0xFF);
-			}
-			// Write to LED
-	  	++ang;
-			led_render();
-			// Some delay
-			HAL_Delay(500);
-		*/
-
-	  rainbow_effect_left();
-	  HAL_Delay(30);
+	  rainbow_effect_fade();
+	  //rainbow_effect_left();
+	  HAL_Delay(5);
 
     /* USER CODE BEGIN 3 */
   }
@@ -445,58 +435,19 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
-/**
- *
- *   uint32_t indx=0;
-  uint16_t pwmData[(24*4)+50];
-  uint32_t color = ((10<<16) | (10<<8) | (10));
-
-  for (int i=23; i>=0; i--) {
-  			if (color&(1<<i)) {
-  				pwmData[indx] = 58;  // 2/3 of 90
-  			} else {
-  				pwmData[indx] = 29;  // 1/3 of 90
-  			}
-  			indx++;
-  }
-
-  for (int i=23; i>=0; i--) {
-  			if (color&(1<<i)) {
-  				pwmData[indx] = 58;  // 2/3 of 90
-  			} else {
-  				pwmData[indx] = 29;  // 1/3 of 90
-  			}
-  			indx++;
-  }
-
-  for (int i=23; i>=0; i--) {
-  			if (color&(1<<i)) {
-  				pwmData[indx] = 58;  // 2/3 of 90
-  			} else {
-  				pwmData[indx] = 29;  // 1/3 of 90
-  			}
-  			indx++;
-  }
-
-  for (int i=23; i>=0; i--) {
-  			if (color&(1<<i)) {
-  				pwmData[indx] = 58;  // 2/3 of 90
-  			} else {
-  				pwmData[indx] = 29;  // 1/3 of 90
-  			}
-  			indx++;
-  }
-
-for (int i=0; i<50; i++)
-{
-	pwmData[indx] = 0;
-	indx++;
+void rainbow_effect_fade() {
+  	for(uint8_t i = 0; i < 8; i++) {
+			// Calculate color
+			uint32_t rgb_color = hsl_to_rgb(ang + (i * angle_difference), 255, 127);
+			// Set color
+			led_set_RGB(i, (rgb_color >> 16) & 0xFF, (rgb_color >> 8) & 0xFF, rgb_color & 0xFF);
+		}
+		// Write to LED
+  	++ang;
+		led_render();
+		// Some delay
 }
 
-  HAL_TIM_PWM_Start_DMA(&htim1, TIM_CHANNEL_1, (uint32_t *)pwmData, indx);
-  //HAL_TIM_Base_Start_IT(&htim1);
-
- */
 uint8_t rainbow_effect_left() {
     // Strip ID: 0 - Effect: Rainbow - LEDS: 8
     // Steps: 13 - Delay: 54
