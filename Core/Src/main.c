@@ -56,7 +56,7 @@ static void MX_USART2_UART_Init(void);
 static void MX_DMA_Init(void);
 static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
-
+uint32_t hsl_to_rgb(uint8_t h, uint8_t s, uint8_t l);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -81,13 +81,15 @@ static inline uint8_t scale8(uint8_t x, uint8_t scale) {
 }
 
 void led_set_RGB(uint8_t index, uint8_t r, uint8_t g, uint8_t b) {
-  rgb_arr[3 * index] = scale8(g, 0xB0); // g;
+  rgb_arr[3 * index] 	 = g; // g;
   rgb_arr[3 * index + 1] = r;
-  rgb_arr[3 * index + 2] = scale8(b, 0xB0); // b;
+  rgb_arr[3 * index + 2] = b; // b;
 
 }
 
 void led_render() {
+  //for(uint8_t i = 0; i < WR_BUF_LEN; ++i) wr_buf[i] = 0;
+
   if(wr_buf_p != 0 || hdma_tim1_ch1.State != HAL_DMA_STATE_READY) {
 	// Ongoing transfer, cancel!
 	for(uint8_t i = 0; i < WR_BUF_LEN; ++i) wr_buf[i] = 0;
@@ -105,9 +107,8 @@ void led_render() {
     wr_buf[i + 40] = PWM_LO << (((rgb_arr[5] << i) & 0x80) > 0);
   }
 
-  wr_buf_p = 2;
-
   HAL_TIM_PWM_Start_DMA(&htim1, TIM_CHANNEL_1, (uint32_t *)wr_buf, WR_BUF_LEN);
+  wr_buf_p = 2;
 }
 
 void HAL_TIM_PWM_PulseFinishedHalfCpltCallback(TIM_HandleTypeDef *htim) {
@@ -187,16 +188,22 @@ int main(void)
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
 
-  led_set_RGB(0, (uint8_t) 100, (uint8_t) 0, (uint8_t) 0);
-  led_set_RGB(1, (uint8_t) 100, (uint8_t) 0, (uint8_t) 0);
-  led_set_RGB(2, (uint8_t) 100, (uint8_t) 0, (uint8_t) 0);
-  led_set_RGB(3, (uint8_t) 100, (uint8_t) 0, (uint8_t) 0);
-  led_set_RGB(4, (uint8_t) 100, (uint8_t) 0, (uint8_t) 0);
-  led_set_RGB(5, (uint8_t) 100, (uint8_t) 0, (uint8_t) 0);
-  led_set_RGB(6, (uint8_t) 100, (uint8_t) 0, (uint8_t) 0);
-  led_set_RGB(8, (uint8_t) 100, (uint8_t) 0, (uint8_t) 0);
+
+  led_set_RGB(0,  100,  0,  0);
+  led_set_RGB(1,  0,  0,  120);
+  led_set_RGB(2,  100,  0,  0);
+  led_set_RGB(3,  100,  0,  0);
 
   led_render();
+
+  /**
+  HAL_Delay(5000);
+  led_set_RGB(1, (uint8_t) 0, (uint8_t) 100, (uint8_t) 0);
+
+  led_render();
+*/
+  uint8_t angle = 0;
+  const uint8_t angle_difference = 11;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -204,6 +211,18 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
+
+	  	for(uint8_t i = 0; i < 8; i++) {
+				// Calculate color
+				uint32_t rgb_color = hsl_to_rgb(angle + (i * angle_difference), 255, 127);
+				// Set color
+				led_set_RGB(i, (rgb_color >> 16) & 0xFF, (rgb_color >> 8) & 0xFF, rgb_color & 0xFF);
+			}
+			// Write to LED
+	  	++angle;
+			led_render();
+			// Some delay
+			HAL_Delay(10);
 
     /* USER CODE BEGIN 3 */
   }
@@ -300,7 +319,7 @@ static void MX_TIM1_Init(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 40;
+  sConfigOC.Pulse = 0;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
@@ -464,6 +483,36 @@ for (int i=0; i<50; i++)
   //HAL_TIM_Base_Start_IT(&htim1);
 
  */
+
+uint32_t hsl_to_rgb(uint8_t h, uint8_t s, uint8_t l) {
+	if(l == 0) return 0;
+
+	volatile uint8_t  r, g, b, lo, c, x, m;
+	volatile uint16_t h1, l1, H;
+	l1 = l + 1;
+	if (l < 128)    c = ((l1 << 1) * s) >> 8;
+	else            c = (512 - (l1 << 1)) * s >> 8;
+
+	H = h * 6;              // 0 to 1535 (actually 1530)
+	lo = H & 255;           // Low byte  = primary/secondary color mix
+	h1 = lo + 1;
+
+	if ((H & 256) == 0)   x = h1 * c >> 8;          // even sextant, like red to yellow
+	else                  x = (256 - h1) * c >> 8;  // odd sextant, like yellow to green
+
+	m = l - (c >> 1);
+	switch(H >> 8) {       // High byte = sextant of colorwheel
+	 case 0 : r = c; g = x; b = 0; break; // R to Y
+	 case 1 : r = x; g = c; b = 0; break; // Y to G
+	 case 2 : r = 0; g = c; b = x; break; // G to C
+	 case 3 : r = 0; g = x; b = c; break; // C to B
+	 case 4 : r = x; g = 0; b = c; break; // B to M
+	 default: r = c; g = 0; b = x; break; // M to R
+	}
+
+	return (((uint32_t)r + m) << 16) | (((uint32_t)g + m) << 8) | ((uint32_t)b + m);
+}
+
 /* USER CODE END 4 */
 
 /**
