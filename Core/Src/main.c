@@ -67,9 +67,6 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 }
 /* USER CODE END 0 */
 
-void HAL_TIM_PWM_PulseFinishedHalfCpltCallback(TIM_HandleTypeDef *htim) {
-
-}
 /**
   * @brief  The application entry point.
   * @retval int
@@ -152,34 +149,13 @@ for (int i=0; i<50; i++)
   //HAL_TIM_Base_Start_IT(&htim1);
   //HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
   /* USER CODE END 2 */
-  uint32_t indx2=0;
+
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
     /* USER CODE END WHILE */
-	  uint32_t color2 = (((rand() % 5)<<16) | ((rand() % 5)<<8) | ((rand() % 5)));
-	  for (int i=23; i>=0; i--) {
-	  			if (color2&(1<<i)) {
-	  				pwmData[indx2] = 58;  // 2/3 of 90
-	  			} else {
-	  				pwmData[indx2] = 29;  // 1/3 of 90
-	  			}
-	  			indx2++;
-	  }
 
-	  for (int i=23; i>=0; i--) {
-	  			if (color2&(1<<i)) {
-	  				pwmData[indx2] = 58;  // 2/3 of 90
-	  			} else {
-	  				pwmData[indx2] = 29;  // 1/3 of 90
-	  			}
-	  			indx2++;
-	  }
-
-	  indx2=0;
-
-	  HAL_Delay(30);
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -368,7 +344,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, LD2_Pin|GPIO_PIN_12, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
@@ -376,12 +352,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : LD2_Pin */
-  GPIO_InitStruct.Pin = LD2_Pin;
+  /*Configure GPIO pins : LD2_Pin PA12 */
+  GPIO_InitStruct.Pin = LD2_Pin|GPIO_PIN_12;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
 }
 
