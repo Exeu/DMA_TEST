@@ -21,6 +21,10 @@ static inline uint8_t scale8(uint8_t x, uint8_t scale) {
 }
 
 void set_brightness(int bright) {
+	if (bright == brightness) {
+		return;
+	}
+
 	brightness = bright;
 }
 
