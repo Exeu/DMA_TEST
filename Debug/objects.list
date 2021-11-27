@@ -1,3 +1,4 @@
+"./Core/Src/WAsys_logging.o"
 "./Core/Src/color_utils.o"
 "./Core/Src/led_driver.o"
 "./Core/Src/main.o"

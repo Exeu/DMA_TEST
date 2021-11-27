@@ -24,6 +24,10 @@ void set_brightness(int bright) {
 	brightness = bright;
 }
 
+int get_brightness() {
+	return brightness;
+}
+
 void led_set_RGB(uint8_t index, uint8_t r, uint8_t g, uint8_t b) {
   float angle = 90-brightness;  // in degrees
   angle = angle*PI / 180;  // in rad

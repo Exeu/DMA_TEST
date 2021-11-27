@@ -15,5 +15,6 @@
 void set_brightness(int bright);
 void led_set_RGB(uint8_t index, uint8_t r, uint8_t g, uint8_t b);
 void led_render();
+int get_brightness();
 
 #endif /* INC_LED_DRIVER_H_ */

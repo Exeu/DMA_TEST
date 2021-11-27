@@ -24,7 +24,10 @@
 /* USER CODE BEGIN Includes */
 #include "stdlib.h"
 #include "math.h"
+#include "string.h"
+#include "stdio.h"
 #include "led_driver.h"
+#include "WAsys_logging.h"
 #include "effects/rainbow_fade.h"
 #include "effects/rainbow_left.h"
 
@@ -60,6 +63,14 @@ static void MX_USART2_UART_Init(void);
 static void MX_DMA_Init(void);
 static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
+
+#define _WAsys_DEF_UART_TIMEOUT_MS 512
+/*function must follow WAsys_LOGGING_NATIVE_IO_CALLBACK_FUNC_T type*/
+static void serial_log(char *arg_buff, size_t arg_len){
+ /*Sending the given log value to UART3 interface*/
+ HAL_UART_Transmit(&huart2,(uint8_t*)arg_buff,arg_len,_WAsys_DEF_UART_TIMEOUT_MS);
+}
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -99,8 +110,14 @@ int main(void)
   MX_USART2_UART_Init();
   MX_DMA_Init();
   MX_TIM1_Init();
+
   /* USER CODE BEGIN 2 */
-  set_brightness(2);
+  WAsys_LOGGING_CONF_T _WAsys_log_conf_ins;
+  _WAsys_log_conf_ins.callback_func=serial_log;
+  _WAsys_log_conf_ins.including_timestamp = 0;
+  WAsys_logging_init(_WAsys_log_conf_ins);
+
+  set_brightness(5);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -108,10 +125,8 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-	  rainbow_effect_fade();
-	  //rainbow_effect_left();
-	  HAL_Delay(20);
-
+	rainbow_effect_fade();
+	HAL_Delay(30);
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -207,7 +222,7 @@ static void MX_TIM1_Init(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 0;
+  sConfigOC.Pulse = 40;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
@@ -315,9 +330,25 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+	int currBri = get_brightness();
+	int newBri = 0;
+	if (currBri + 5 > 45) {
+		newBri = 0;
+	} else {
+		newBri = currBri + 5;
+	}
+
+	set_brightness(newBri);
+	logf("set_brightness: %d\n",newBri);
+}
 
 /* USER CODE END 4 */
 
