@@ -29,6 +29,7 @@ Core/Src/main.o: ../Core/Src/main.c \
  C:/Users/jan/STM32Cube/Repository/STM32Cube_FW_F4_V1.26.2/Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h \
  C:/Users/jan/STM32Cube/Repository/STM32Cube_FW_F4_V1.26.2/Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h \
  C:/Users/jan/STM32CubeIDE/workspace_1.7.0/DMA_TEST/Core/Inc/led_driver.h \
+ C:/Users/jan/STM32CubeIDE/workspace_1.7.0/DMA_TEST/Core/Inc/WAsys_logging.h \
  C:/Users/jan/STM32CubeIDE/workspace_1.7.0/DMA_TEST/Core/Inc/effects/rainbow_fade.h \
  C:/Users/jan/STM32CubeIDE/workspace_1.7.0/DMA_TEST/Core/Inc/effects/rainbow_left.h
 
@@ -91,6 +92,8 @@ C:/Users/jan/STM32Cube/Repository/STM32Cube_FW_F4_V1.26.2/Drivers/STM32F4xx_HAL_
 C:/Users/jan/STM32Cube/Repository/STM32Cube_FW_F4_V1.26.2/Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h:
 
 C:/Users/jan/STM32CubeIDE/workspace_1.7.0/DMA_TEST/Core/Inc/led_driver.h:
+
+C:/Users/jan/STM32CubeIDE/workspace_1.7.0/DMA_TEST/Core/Inc/WAsys_logging.h:
 
 C:/Users/jan/STM32CubeIDE/workspace_1.7.0/DMA_TEST/Core/Inc/effects/rainbow_fade.h:
 
