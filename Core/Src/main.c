@@ -48,6 +48,8 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+ADC_HandleTypeDef hadc1;
+
 TIM_HandleTypeDef htim1;
 DMA_HandleTypeDef hdma_tim1_ch1;
 
@@ -62,6 +64,7 @@ static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_DMA_Init(void);
 static void MX_TIM1_Init(void);
+static void MX_ADC1_Init(void);
 /* USER CODE BEGIN PFP */
 
 #define _WAsys_DEF_UART_TIMEOUT_MS 512
@@ -75,7 +78,10 @@ static void serial_log(char *arg_buff, size_t arg_len){
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+uint32_t MAP(int x, int in_min, int in_max, int out_min, int out_max)
+{
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
 
 /* USER CODE END 0 */
 
@@ -86,7 +92,6 @@ static void serial_log(char *arg_buff, size_t arg_len){
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -110,13 +115,14 @@ int main(void)
   MX_USART2_UART_Init();
   MX_DMA_Init();
   MX_TIM1_Init();
-
+  MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   WAsys_LOGGING_CONF_T _WAsys_log_conf_ins;
   _WAsys_log_conf_ins.callback_func=serial_log;
   _WAsys_log_conf_ins.including_timestamp = 0;
   WAsys_logging_init(_WAsys_log_conf_ins);
 
+  uint32_t raw;
   set_brightness(5);
   /* USER CODE END 2 */
 
@@ -125,8 +131,16 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-	rainbow_effect_fade();
-	HAL_Delay(30);
+	  rainbow_effect_fade();
+      HAL_ADC_Start(&hadc1);
+      HAL_ADC_PollForConversion(&hadc1, 300);
+
+      raw =  HAL_ADC_GetValue(&hadc1);
+      int outB = MAP(raw, 3800, 1, 1, 15);
+      logf("set_brightness: %d\n",outB);
+
+      set_brightness(outB);
+      HAL_Delay(30);
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -173,6 +187,56 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief ADC1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_ADC1_Init(void)
+{
+
+  /* USER CODE BEGIN ADC1_Init 0 */
+
+  /* USER CODE END ADC1_Init 0 */
+
+  ADC_ChannelConfTypeDef sConfig = {0};
+
+  /* USER CODE BEGIN ADC1_Init 1 */
+
+  /* USER CODE END ADC1_Init 1 */
+  /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
+  */
+  hadc1.Instance = ADC1;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
+  hadc1.Init.Resolution = ADC_RESOLUTION_12B;
+  hadc1.Init.ScanConvMode = DISABLE;
+  hadc1.Init.ContinuousConvMode = DISABLE;
+  hadc1.Init.DiscontinuousConvMode = DISABLE;
+  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  hadc1.Init.NbrOfConversion = 1;
+  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  if (HAL_ADC_Init(&hadc1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
+  */
+  sConfig.Channel = ADC_CHANNEL_0;
+  sConfig.Rank = 1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN ADC1_Init 2 */
+
+  /* USER CODE END ADC1_Init 2 */
+
 }
 
 /**
@@ -338,12 +402,9 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-	int currBri = get_brightness();
-	int newBri = 0;
-	if (currBri + 5 > 45) {
+	int newBri = get_brightness() + 5;
+	if (newBri > 45) {
 		newBri = 0;
-	} else {
-		newBri = currBri + 5;
 	}
 
 	set_brightness(newBri);
