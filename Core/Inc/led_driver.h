@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #define PWM_HI (58)
-#define PWM_LO (29)
+#define PWM_LO (41)
 
 #define NUM_BPP (3)
 #define NUM_PIXELS (8)
