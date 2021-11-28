@@ -14,7 +14,7 @@ uint_fast8_t wr_buf_p = 0;
 
 // brightness 0 - 45
 int brightness = 0;
-
+int newBrightness = 0;
 
 static inline uint8_t scale8(uint8_t x, uint8_t scale) {
   return ((uint16_t)x * scale) >> 8;
@@ -25,7 +25,7 @@ void set_brightness(int bright) {
 		return;
 	}
 
-	brightness = bright;
+	newBrightness = bright;
 }
 
 int get_brightness() {
@@ -43,7 +43,9 @@ void led_set_RGB(uint8_t index, uint8_t r, uint8_t g, uint8_t b) {
 
 void led_render() {
   //for(uint8_t i = 0; i < WR_BUF_LEN; ++i) wr_buf[i] = 0;
-
+  if (brightness != newBrightness) {
+	  brightness = newBrightness;
+  }
   if(wr_buf_p != 0 || hdma_tim1_ch1.State != HAL_DMA_STATE_READY) {
 	// Ongoing transfer, cancel!
 	for(uint8_t i = 0; i < WR_BUF_LEN; ++i) wr_buf[i] = 0;
