@@ -23,5 +23,5 @@ SUBDIRS := \
 Core/Src \
 Core/Src/effects \
 Core/Startup \
-Drivers/STM32F4xx_HAL_Driver \
+Drivers/STM32F4xx_HAL_Driver/Src \
 
